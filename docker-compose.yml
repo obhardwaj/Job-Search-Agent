@@ -1,7 +1,41 @@
 version: '3.8'
 
 services:
-  # 1. Your Database
+  # ── CUSTOM APPLICATION SERVICES ───────────────────────────────────────────
+  api:
+    build:
+      context: .               # Look at the root project directory
+      dockerfile: Dockerfile   # Use the single master Dockerfile at the root
+      target: api-runtime      # Execute only the api-runtime stage
+    container_name: ja-api
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://app_user:app_secure_password@postgres:5432/agent_dashboard
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+
+  resume-store:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: resume-store-runtime # Execute only the resume-store stage
+    container_name: ja-mcp-resume-store
+    depends_on:
+      - postgres
+
+  tracker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: tracker-runtime      # Execute only the tracker stage
+    container_name: ja-mcp-tracker
+    depends_on:
+      - postgres
+
+  # ── PRE-BUILT INFRASTRUCTURE DATA LAYER ───────────────────────────────────
   postgres:
     image: postgres:15-alpine
     container_name: mcp-postgres
@@ -14,7 +48,6 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  # 2. Your Cache / Queue
   redis:
     image: redis:7-alpine
     container_name: mcp-redis
@@ -23,7 +56,7 @@ services:
     volumes:
       - redis_data:/data
 
-# 3. Persistent Storage
+# ── PERSISTENT STORAGE ──────────────────────────────────────────────────────
 volumes:
   postgres_data:
   redis_data:
